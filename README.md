@@ -4,25 +4,83 @@ Demonstrate capability to collect, work with, and clean a data set. The goal is 
 Website Links: Descripton & input data for project 
 http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones 
 https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
-### Repo Contents
+## Repo Contents
 * CodeBook.md
 * run_analysis.R
 * ReadMe.md
 
-### Requirements for R-Script (run_analysis.R)
-1. Merges the training and the test sets to create one data set.
-2. Extracts only the measurements on the mean and standard deviation for each measurement. 
-3. Uses descriptive activity names to name the activities in the data set
-4. Appropriately labels the data set with descriptive variable names. 
-5. From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
+## R-Script Work Process
+The script 'run_analysis.R' starts with a verification of the working directory and then clears that workspace. Prior to executing data gathering, verification of the folder 'data' is conducted. If the folder doesn't exist in the working directory it will automatically get created. In addition, the code will check whether or not the 'Dataset.zip' pre-exists in the 'data' folder; if the conditional is satisfied then the zip file is downloaded from the provided url https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip. 
+The script then proceeds to verify whether or not the file 'Dataset.zip' has been previously unzipped; extraction occurs if conditional is satisfied and hence creating a folder '\data\UCI HAR Dataset' as well as two sub-folders 'test' & 'train' contained within. The key input files are summarized as follows:
+* .\data\UCI HAR Dataset\activity_labels.txt
+* .\data\UCI HAR Dataset\features.txt
+* .\data\UCI HAR Dataset\test\subject_test.txt
+* .\data\UCI HAR Dataset\test\X_test.txt
+* .\data\UCI HAR Dataset\test\y_test.txt
+* .\data\UCI HAR Dataset\train\subject_train.txt
+* .\data\UCI HAR Dataset\train\X_train.txt
+* .\data\UCI HAR Dataset\train\y_train.txt
 
-### Deliverables (.txt,.csv)
+##### Note: 
+In both folders 'test' and 'train' there is a subfolder 'Inertial Signals' that contains raw test data for the accelerometers and the gyro.
+#### Read dataset .txt files into R-Database
+Load key input files as previously highlighted into R-environment using ```read.table```.
+```
+activityLabels <- read.table(file.path(path,"activity_labels.txt"),header=FALSE)
+features       <- read.table(file.path(path,"features.txt"),header=FALSE)
+subjectTrain   <- read.table(file.path(path,"train","subject_train.txt"),header=FALSE)
+featureTrain   <- read.table(file.path(path,"train","X_train.txt"),header=FALSE)
+activityTrain  <- read.table(file.path(path,"train","y_train.txt"),header=FALSE)
+subjectTest    <- read.table(file.path(path,"test","subject_test.txt"),header=FALSE)
+featureTest    <- read.table(file.path(path,"test","X_test.txt"),header=FALSE)
+activityTest   <- read.table(file.path(path,"test","y_test.txt"),header=FALSE)
+```
+#### Merge test and training sets into one data set 
+Combine test and training data rows of subject, feature, and activity variables using the ```rbind``` and assign appropriate column names.  
+```
+subjectData            <- rbind(subjectTrain,subjectTest) # combine rows
+colnames(subjectData)  <- "subjectID" # assign column name
+featureData            <- rbind(featureTrain,featureTest) # combine rows
+colnames(featureData)  <- features[,2] # assign column names according to features.txt
+activityData <- rbind(activityTrain,activityTest) # combine rows
+colnames(activityData) <- "activityID" # assign column name
+mergeData <- cbind(featureData,subjectData,activityData) # combine cols
+```
+Combine columns using ```cbind``` to obtain a single merged dataset:
+```
+mergeData <- cbind(featureData,subjectData,activityData) # combine cols
+```
+Remove (```rm```) remaining files to conserve memory space:
+```
+rm(subjectTrain, subjectTest, featureTrain)
+rm(featureTest,activityTrain, activityTest)
+```
+#### Pattern matching for column extraction (subjectID, activityID, mean, std)
+Identify column names subjectID, activityID, mean, std (standard deviation) using ```grepl```. 
+#### Extraction and creation of a new subset of merged data
+More specifically, extracting only the measurements on the mean and standard deviation for each measurement corresponding by subject and activity; ```subsetMergeData <- mergeData[, columnsToKeep]```, creating a new subset 'subsetMergeData'.
+#### Apply descriptive activity names to the activities in the data set
+Impose descriptive activity names via factor levels; WALKING, WALKING_UPSTAIRS, WALKING_DOWNSTAIRS, SITTING, STANDING, LAYING.
+```
+subsetMergeData$activityID <- factor(subsetMergeData$activityID,labels=activityLabels[,2])
+```
+#### Update abbreviated column names with appropriate descriptions
+Replace abbreviated column names using the function ```gsub```; e.g. 
+```names(subsetMergeData)<-gsub("^t", "time", names(subsetMergeData))``` 
+#### Create independent tidy set
+Formulate independent tidy set (using the function ```aggregate```) with the average/mean of each variable for each activity and each subject and then order the columns.
+```
+IndependentSet <- aggregate(. ~subjectID + activityID, subsetMergeData, mean)
+FinalTidySet <- IndependentSet[order(IndependentSet$subjectID, IndependentSet$activityID)
+```
+#### Output tidy data results to a .txt and .cvs file
+Using ```write.table``` create output data files:
 ```
 write.table(FinalTidySet, file = "tidydata.txt",row.name=FALSE,quote = FALSE, sep = '\t')
-write.csv(FinalTidySet, "tidydata.csv", row.names=FALSE)
+write.cvs(FinalTidySet, file = "tidydata.cvs",row.name=FALSE)
 ```
 
-### Structure Output - Compact Display
+## Structure Output - Compact Display
 ```
 > str(FinalTidySet)
 'data.frame':	180 obs. of  81 variables:
@@ -111,5 +169,5 @@ write.csv(FinalTidySet, "tidydata.csv", row.names=FALSE)
 [1] "data.frame"
 ```
 
-### Additional Information
+## Additional Information
 Refer to CodeBook.md for information about the variables, data and transformations.
