@@ -113,4 +113,4 @@ FinalTidySet <- IndependentSet[order(IndependentSet$subjectID, IndependentSet$ac
 #
 # Write output to .txt & .cvs file
 write.table(FinalTidySet, file = "tidydata.txt",row.name=FALSE,quote = FALSE, sep = '\t')
-write.cvs(FinalTidySet, file = "tidydata.cvs",row.name=FALSE)
+write.csv(FinalTidySet, "tidydata.csv", row.names=FALSE)
